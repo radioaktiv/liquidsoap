@@ -9,8 +9,8 @@ module Sys_time = struct
   let gettimeofday = gettimeofday
 
   let of_float d = {
-    tv_sec = Int64.of_float d;
-    tv_usec= Int64.of_float (d*. 1_000_000.)
+    tv_sec  = Int64.of_float d;
+    tv_usec = Int64.of_float ((d -. floor d) *. 1_000_000.)
   }
 
   let to_float {tv_sec; tv_usec} =
@@ -28,7 +28,17 @@ module Sys_time = struct
 
   let ( |+| ) = apply Int64.add
   let ( |-| ) = apply Int64.sub
-  let ( |*| ) = apply Int64.mul
+  let ( |*| ) = fun x y -> normalize {
+    tv_sec  = Int64.mul x.tv_sec y.tv_sec;
+    tv_usec =
+      Int64.add
+        (Int64.add
+          (Int64.mul x.tv_sec y.tv_usec)
+          (Int64.mul x.tv_usec y.tv_sec))
+        (Int64.div
+          (Int64.mul x.tv_usec y.tv_usec)
+          1_000_000L)
+  }
 
   let ( |<| ) = fun x y ->
     if Int64.equal x.tv_sec y.tv_sec then

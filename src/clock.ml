@@ -42,8 +42,8 @@ let time_unit = Time.of_float 1.
 let time_zero = Time.of_float 0.
 
 let () =
-  ignore(Dtools.Init.at_start (fun () ->
-    log#info "Using %s implementation for latency control" Time.implementation))
+  Configure.at_init (fun () ->
+    log#important "Using %s implementation for latency control" Time.implementation)
 
 (** [started] indicates that the application has loaded and started
   * its initial configuration; it is set after the first collect.
