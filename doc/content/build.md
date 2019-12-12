@@ -89,6 +89,7 @@ Libraries not developed by Savonet are:
 | ocaml-speex         |  >= 0.3.0                | Ogg/Speex codec                               |
 | ocaml-srt           |  >= 0.1.1                  | SRT I/O                                       |
 | ocaml-ssl           |  >= 0.5.2                  | SSL/https support                             |
+| ocaml-sys-time      |              | High-resolution latency timing                |
 | ocaml-taglib        |  >= 0.3.0               | MP3ID3 metadata access                        |
 | ocaml-theora        |  >= 0.3.1               | Ogg/Theora codec                              |
 | ocaml-vorbis        |  >= 0.7.0               | Ogg/Vorbis codec                              |

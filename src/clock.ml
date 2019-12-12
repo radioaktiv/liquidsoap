@@ -35,6 +35,16 @@ let log = Log.make ["clock"]
 let conf_clock =
   Dtools.Conf.void ~p:(Configure.conf#plug "clock") "Clock settings"
 
+module Time : Liq_time.T = (val !Liq_time.implementation) 
+
+open Time
+let time_unit = Time.of_int64 1L
+let time_zero = Time.of_int64 0L
+
+let () =
+  ignore(Dtools.Init.at_start (fun () ->
+    log#info "Using %s implementation for latency control" Time.implementation))
+
 (** [started] indicates that the application has loaded and started
   * its initial configuration; it is set after the first collect.
   * It is mostly intended to allow different behaviors on error:
@@ -103,16 +113,6 @@ let conf_max_latency =
         "The reset is typically only useful to reconnect icecast mounts." ]
 
 (** Timing stuff, make sure the frame rate is correct. *)
-
-let time = Unix.gettimeofday
-
-let usleep d =
-  (* In some implementations,
-   * Thread.delay uses Unix.select which can raise EINTR.
-   * A really good implementation would keep track of the elapsed time and then
-   * trigger another Thread.delay for the remaining time.
-   * This cheap thing does the job for now.. *)
-  try Thread.delay d with Unix.Unix_error (Unix.EINTR, _, _) -> ()
 
 (** In [`CPU] mode, synchronization is governed by the CPU clock.
   * In [`None] mode, there is no synchronization control. Latency in
@@ -199,8 +199,8 @@ class clock ?(sync=`Auto) id =
       fun f -> Tutils.mutexify lock f ()
 
     val mutable self_sync = None
-    val mutable t0 = time ()
-    val mutable ticks = 0L
+    val mutable t0 = gettimeofday ()
+    val mutable ticks = time_zero
     method private self_sync =
       let new_val =
         match sync with
@@ -217,8 +217,8 @@ class clock ?(sync=`Auto) id =
          | None, false
          | Some true, false ->
            log#important "Delegating synchronisation to CPU clock";
-           t0 <- time ();
-           ticks <- 0L;
+           t0 <- gettimeofday ();
+           ticks <- time_zero;
          | None, true
          | Some false, true ->
            log#important "Delegating synchronisation to active sources"
@@ -229,15 +229,22 @@ class clock ?(sync=`Auto) id =
 
     method private run =
       let acc = ref 0 in
-      let max_latency = -.conf_max_latency#get in
-      let last_latency_log = ref (time ()) in
-      t0 <- time ();
-      ticks <- 0L;
-      let frame_duration = Lazy.force Frame.duration in
+      let max_latency = 
+        Time.of_int64 (Int64.of_int
+          (- (Frame.master_of_seconds conf_max_latency#get)))
+      in
+      let last_latency_log = ref (gettimeofday ()) in
+      t0 <- gettimeofday ();
+      ticks <- time_zero;
+      let frame_duration =
+        Time.of_int64 (Int64.of_int
+         (Frame.master_of_seconds
+            (Lazy.force Frame.duration)))
+      in
       let delay () =
         t0
-        +. (frame_duration *. Int64.to_float (Int64.add ticks 1L))
-        -. time ()
+        |+| (frame_duration |*| (ticks |+| time_unit))
+        |-| gettimeofday ()
       in
       log#important "Streaming loop starts in %s mode" (sync_descr sync);
       let rec loop () =
@@ -245,11 +252,11 @@ class clock ?(sync=`Auto) id =
         if outputs = [] then ()
         else (
           let self_sync = self#self_sync in
-          let rem = if self_sync then 0. else delay () in
+          let rem = if self_sync then time_zero else delay () in
           (* Sleep a while or worry about the latency *)
-          if self_sync || rem > 0. then (
+          if self_sync || time_zero |<| rem then (
             acc := 0 ;
-            if rem > 0. then usleep rem )
+            if time_zero |<| rem then usleep rem )
           else (
             incr acc ;
             if rem < max_latency then (
@@ -258,18 +265,18 @@ class clock ?(sync=`Auto) id =
                 (function
                   | `Active, s when s#is_active -> s#output_reset | _ -> ())
                 outputs ;
-              t0 <- time () ;
-              ticks <- 0L ;
+              t0 <- gettimeofday () ;
+              ticks <- time_zero ;
               acc := 0 )
             else if
-              (rem <= -1. || !acc >= 100) && !last_latency_log +. 1. < time ()
+              (rem <= (time_zero |-| time_unit) || !acc >= 100) && !last_latency_log |+| time_unit < gettimeofday ()
             then (
-              last_latency_log := time () ;
-              log#severe "We must catchup %.2f seconds%s!" (-.rem)
+              last_latency_log := gettimeofday () ;
+              log#severe "We must catchup %.2f seconds%s!" (Time.to_float (time_zero |-| rem))
                 ( if !acc <= 100 then ""
                 else " (we've been late for 100 rounds)" ) ;
               acc := 0 ) ) ;
-          ticks <- Int64.add ticks 1L ;
+          ticks <- ticks |+| time_unit ;
           (* This is where the streaming actually happens: *)
           self#end_tick ;
           loop () )
