@@ -38,8 +38,8 @@ let conf_clock =
 module Time : Liq_time.T = (val !Liq_time.implementation) 
 
 open Time
-let time_unit = Time.of_int64 1L
-let time_zero = Time.of_int64 0L
+let time_unit = Time.of_float 1.
+let time_zero = Time.of_float 0.
 
 let () =
   ignore(Dtools.Init.at_start (fun () ->
@@ -216,16 +216,15 @@ class clock ?(sync=`Auto) id =
     method private run =
       let acc = ref 0 in
       let max_latency = 
-        Time.of_int64 (Int64.of_int
-          (- (Frame.master_of_seconds conf_max_latency#get)))
+        Time.of_float
+         (-. conf_max_latency#get)
       in
       let last_latency_log = ref (gettimeofday ()) in
       t0 <- gettimeofday ();
       ticks <- time_zero;
       let frame_duration =
-        Time.of_int64 (Int64.of_int
-         (Frame.master_of_seconds
-            (Lazy.force Frame.duration)))
+       Time.of_float
+         (Lazy.force Frame.duration)
       in
       let delay () =
         t0

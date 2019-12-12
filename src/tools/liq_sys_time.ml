@@ -8,8 +8,9 @@ module Sys_time = struct
 
   let gettimeofday = gettimeofday
 
-  let of_int64 tv_sec = {
-    tv_sec; tv_usec=0L
+  let of_float d = {
+    tv_sec = Int64.of_float d;
+    tv_usec= Int64.of_float (d*. 1_000_000.)
   }
 
   let to_float {tv_sec; tv_usec} =
