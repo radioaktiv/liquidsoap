@@ -10,6 +10,7 @@ module type T = sig
   val ( |-| ) : t -> t -> t
   val ( |*| ) : t -> t -> t
   val ( |<| ) : t -> t -> bool
+  val ( |<=| ) : t -> t -> bool
 end
 
 module Unix = struct
@@ -22,6 +23,7 @@ module Unix = struct
   let ( |-| ) = fun x y -> x -. y
   let ( |*| ) = fun x y -> x *. y
   let ( |<| ) = fun x y -> x < y
+  let ( |<=| ) = fun x y -> x <= y
 
   let usleep d =
     try Thread.delay d with Unix.Unix_error (Unix.EINTR, _, _) -> ()

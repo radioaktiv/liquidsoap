@@ -254,7 +254,7 @@ class clock ?(sync=`Auto) id =
               ticks <- time_zero ;
               acc := 0 )
             else if
-              (rem <= (time_zero |-| time_unit) || !acc >= 100) && !last_latency_log |+| time_unit < gettimeofday ()
+              (rem |<=| (time_zero |-| time_unit) || !acc >= 100) && !last_latency_log |+| time_unit |<| gettimeofday ()
             then (
               last_latency_log := gettimeofday () ;
               log#severe "We must catchup %.2f seconds%s!" (Time.to_float (time_zero |-| rem))

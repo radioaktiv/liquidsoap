@@ -10,6 +10,7 @@ module type T = sig
   val ( |-| ) : t -> t -> t
   val ( |*| ) : t -> t -> t
   val ( |<| ) : t -> t -> bool
+  val ( |<=| ) : t -> t -> bool
 end
 
 val implementation: (module T) ref
