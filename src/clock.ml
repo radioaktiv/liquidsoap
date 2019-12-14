@@ -35,15 +35,18 @@ let log = Log.make ["clock"]
 let conf_clock =
   Dtools.Conf.void ~p:(Configure.conf#plug "clock") "Clock settings"
 
-module Time : Liq_time.T = (val !Liq_time.implementation) 
+module Time : Liq_time.T = (val !Liq_time.implementation)
 
 open Time
+
 let time_unit = Time.of_float 1.
+
 let time_zero = Time.of_float 0.
 
 let () =
   Configure.at_init (fun () ->
-    log#important "Using %s implementation for latency control" Time.implementation)
+      log#important "Using %s implementation for latency control"
+        Time.implementation)
 
 (** [started] indicates that the application has loaded and started
   * its initial configuration; it is set after the first collect.
@@ -103,10 +106,12 @@ let leave (s : active_source) =
   * One could think of several clocks for isolated parts of a script.
   * One can also think of alsa-clocks, etc. *)
 
-let conf = Dtools.Conf.void ~p:(Configure.conf#plug "root") "Streaming clock settings"
+let conf =
+  Dtools.Conf.void ~p:(Configure.conf#plug "root") "Streaming clock settings"
 
 let conf_max_latency =
-  Dtools.Conf.float ~p:(conf#plug "max_latency") ~d:60. "Maximum latency in seconds"
+  Dtools.Conf.float ~p:(conf#plug "max_latency") ~d:60.
+    "Maximum latency in seconds"
     ~comments:
       [ "If the latency gets higher than this value, the outputs will be reset,";
         "instead of trying to catch it up second by second.";
@@ -115,11 +120,14 @@ let conf_max_latency =
 (** Timing stuff, make sure the frame rate is correct. *)
 
 let sync_descr = function
-  | `Auto -> "auto-sync"
-  | `CPU -> "CPU sync"
-  | `None -> "no sync"
+  | `Auto ->
+      "auto-sync"
+  | `CPU ->
+      "CPU sync"
+  | `None ->
+      "no sync"
 
-class clock ?(sync=`Auto) id =
+class clock ?(sync = `Auto) id =
   object (self)
     initializer Clocks.add clocks (self :> Source.clock)
 
@@ -185,53 +193,46 @@ class clock ?(sync=`Auto) id =
       fun f -> Tutils.mutexify lock f ()
 
     val mutable self_sync = None
+
     val mutable t0 = gettimeofday ()
+
     val mutable ticks = time_zero
+
     method private self_sync =
       let new_val =
         match sync with
           | `Auto ->
-               List.exists (fun (state,s) ->
-                 state = `Active && s#self_sync) outputs
+              List.exists
+                (fun (state, s) -> state = `Active && s#self_sync)
+                outputs
           | `CPU ->
-               false
+              false
           | `None ->
-               true
+              true
       in
       begin
-       match self_sync, new_val with
-         | None, false
-         | Some true, false ->
-           log#important "Delegating synchronisation to CPU clock";
-           t0 <- gettimeofday ();
-           ticks <- time_zero;
-         | None, true
-         | Some false, true ->
-           log#important "Delegating synchronisation to active sources"
-         | _ -> ()
-      end;
-      self_sync <- Some new_val;
+        match (self_sync, new_val) with None, false | Some true, false ->
+            log#important "Delegating synchronisation to CPU clock" ;
+            t0 <- gettimeofday () ;
+            ticks <- time_zero
+        | None, true | Some false, true ->
+            log#important "Delegating synchronisation to active sources"
+        | _ -> ()
+      end ;
+      self_sync <- Some new_val ;
       new_val
 
     method private run =
       let acc = ref 0 in
-      let max_latency = 
-        Time.of_float
-         (-. conf_max_latency#get)
-      in
+      let max_latency = Time.of_float (-.conf_max_latency#get) in
       let last_latency_log = ref (gettimeofday ()) in
-      t0 <- gettimeofday ();
-      ticks <- time_zero;
-      let frame_duration =
-       Time.of_float
-         (Lazy.force Frame.duration)
-      in
+      t0 <- gettimeofday () ;
+      ticks <- time_zero ;
+      let frame_duration = Time.of_float (Lazy.force Frame.duration) in
       let delay () =
-        t0
-        |+| (frame_duration |*| (ticks |+| time_unit))
-        |-| gettimeofday ()
+        t0 |+| (frame_duration |*| (ticks |+| time_unit)) |-| gettimeofday ()
       in
-      log#important "Streaming loop starts in %s mode" (sync_descr sync);
+      log#important "Streaming loop starts in %s mode" (sync_descr sync) ;
       let rec loop () =
         (* Stop running if there is no output. *)
         if outputs = [] then ()
@@ -254,10 +255,12 @@ class clock ?(sync=`Auto) id =
               ticks <- time_zero ;
               acc := 0 )
             else if
-              (rem |<=| (time_zero |-| time_unit) || !acc >= 100) && !last_latency_log |+| time_unit |<| gettimeofday ()
+              (rem |<=| (time_zero |-| time_unit) || !acc >= 100)
+              && !last_latency_log |+| time_unit |<| gettimeofday ()
             then (
               last_latency_log := gettimeofday () ;
-              log#severe "We must catchup %.2f seconds%s!" (Time.to_float (time_zero |-| rem))
+              log#severe "We must catchup %.2f seconds%s!"
+                (Time.to_float (time_zero |-| rem))
                 ( if !acc <= 100 then ""
                 else " (we've been late for 100 rounds)" ) ;
               acc := 0 ) ) ;
