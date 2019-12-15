@@ -32,7 +32,7 @@ type clock_variable
   * to a sound card, in which case the source latency is governed
   * by the sound card's clock. Another case is synchronous network
   * protocol such as [input.srt]. *)
-type sync = [`Auto | `CPU | `None]
+type sync = [ `Auto | `CPU | `None ]
 
 (** The liveness type of a source indicates whether or not it can
   * fail to broadcast.
@@ -42,11 +42,10 @@ type source_t = Fallible | Infallible
 (** Instrumentation. *)
 
 type metadata = (int * (string, string) Hashtbl.t) list
-
-type clock_sync_mode = [sync | `Unknown]
+type clock_sync_mode = [ sync | `Unknown ]
 
 type watcher = {
-  get_ready:
+  get_ready :
     stype:source_t ->
     is_output:bool ->
     id:string ->
@@ -54,8 +53,8 @@ type watcher = {
     clock_id:string ->
     clock_sync_mode:clock_sync_mode ->
     unit;
-  leave: unit -> unit;
-  get_frame:
+  leave : unit -> unit;
+  get_frame :
     start_time:float ->
     end_time:float ->
     start_position:int ->
@@ -63,7 +62,7 @@ type watcher = {
     is_partial:bool ->
     metadata:metadata ->
     unit;
-  after_output: unit -> unit;
+  after_output : unit -> unit;
 }
 
 (** The [source] use is to send data frames through the [get] method. *)
@@ -241,7 +240,6 @@ class virtual active_operator :
      end
 
 val has_outputs : unit -> bool
-
 val iterate_new_outputs : (active_source -> unit) -> unit
 
 (** {1 Clocks}
@@ -273,8 +271,7 @@ class type clock =
 
     (** Streaming *)
 
-    method start_outputs :
-      (active_source -> bool) -> unit -> active_source list
+    method start_outputs : (active_source -> bool) -> unit -> active_source list
 
     method get_tick : int
 
@@ -282,7 +279,6 @@ class type clock =
   end
 
 exception Clock_conflict of string * string
-
 exception Clock_loop of string * string
 
 module Clock_variables : sig
@@ -294,12 +290,8 @@ module Clock_variables : sig
     clock_variable
 
   val create_known : clock -> clock_variable
-
   val unify : clock_variable -> clock_variable -> unit
-
   val forget : clock_variable -> clock_variable -> unit
-
   val get : clock_variable -> clock
-
   val is_known : clock_variable -> bool
 end
