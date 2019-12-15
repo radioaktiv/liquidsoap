@@ -83,13 +83,13 @@ Libraries not developed by Savonet are:
 | ocaml-ogg           |  >= 0.6.0                  | Ogg codecs                                    |
 | ocaml-opus          |  >= 0.1.3                 | Ogg/Opus codec                                |
 | ocaml-portaudio     |  >= 0.2.0            | Portaudio I/O                                 |
+| ocaml-posix-time    |              | High-resolution latency timing                |
 | ocaml-pulseaudio    |  >= 0.1.4           | PulseAudio I/O                                |
 | ocaml-shine         |  >= 0.2.0                | Fixed-point MP3 encoding                      |
 | ocaml-soundtouch    |  >= 0.1.9           | Libsoundtouch's audio effects                 |
 | ocaml-speex         |  >= 0.3.0                | Ogg/Speex codec                               |
 | ocaml-srt           |  >= 0.1.1                  | SRT I/O                                       |
 | ocaml-ssl           |  >= 0.5.2                  | SSL/https support                             |
-| ocaml-sys-time      |              | High-resolution latency timing                |
 | ocaml-taglib        |  >= 0.3.0               | MP3ID3 metadata access                        |
 | ocaml-theora        |  >= 0.3.1               | Ogg/Theora codec                              |
 | ocaml-vorbis        |  >= 0.7.0               | Ogg/Vorbis codec                              |

@@ -3,9 +3,9 @@ module type T = sig
 
   val implementation : string
 
-  val gettimeofday : unit -> t
+  val time : unit -> t
 
-  val usleep : t -> unit
+  val sleep : t -> unit
 
   val of_float : float -> t
 
@@ -27,7 +27,7 @@ module Unix = struct
 
   let implementation = "builtin (low-precision)"
 
-  let gettimeofday = Unix.gettimeofday
+  let time = Unix.gettimeofday
 
   let of_float x = x
 
@@ -43,8 +43,7 @@ module Unix = struct
 
   let ( |<=| ) x y = x <= y
 
-  let usleep d =
-    try Thread.delay d with Unix.Unix_error (Unix.EINTR, _, _) -> ()
+  let sleep = Thread.delay
 end
 
 let unix : (module T) = (module Unix)

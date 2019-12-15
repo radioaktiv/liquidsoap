@@ -43,6 +43,9 @@ let time_unit = Time.of_float 1.
 
 let time_zero = Time.of_float 0.
 
+let sleep d =
+  try sleep d with Unix.Unix_error (Unix.EINTR, _, _) -> sleep (d |-| time ())
+
 let () =
   Configure.at_init (fun () ->
       log#important "Using %s implementation for latency control"
@@ -194,7 +197,7 @@ class clock ?(sync = `Auto) id =
 
     val mutable self_sync = None
 
-    val mutable t0 = gettimeofday ()
+    val mutable t0 = time ()
 
     val mutable ticks = time_zero
 
@@ -213,7 +216,7 @@ class clock ?(sync = `Auto) id =
       begin
         match (self_sync, new_val) with None, false | Some true, false ->
             log#important "Delegating synchronisation to CPU clock" ;
-            t0 <- gettimeofday () ;
+            t0 <- time () ;
             ticks <- time_zero
         | None, true | Some false, true ->
             log#important "Delegating synchronisation to active sources"
@@ -225,12 +228,12 @@ class clock ?(sync = `Auto) id =
     method private run =
       let acc = ref 0 in
       let max_latency = Time.of_float (-.conf_max_latency#get) in
-      let last_latency_log = ref (gettimeofday ()) in
-      t0 <- gettimeofday () ;
+      let last_latency_log = ref (time ()) in
+      t0 <- time () ;
       ticks <- time_zero ;
       let frame_duration = Time.of_float (Lazy.force Frame.duration) in
       let delay () =
-        t0 |+| (frame_duration |*| (ticks |+| time_unit)) |-| gettimeofday ()
+        t0 |+| (frame_duration |*| (ticks |+| time_unit)) |-| time ()
       in
       log#important "Streaming loop starts in %s mode" (sync_descr sync) ;
       let rec loop () =
@@ -242,7 +245,7 @@ class clock ?(sync = `Auto) id =
           (* Sleep a while or worry about the latency *)
           if self_sync || time_zero |<| rem then (
             acc := 0 ;
-            if time_zero |<| rem then usleep rem )
+            if time_zero |<| rem then sleep rem )
           else (
             incr acc ;
             if rem < max_latency then (
@@ -251,14 +254,14 @@ class clock ?(sync = `Auto) id =
                 (function
                   | `Active, s when s#is_active -> s#output_reset | _ -> ())
                 outputs ;
-              t0 <- gettimeofday () ;
+              t0 <- time () ;
               ticks <- time_zero ;
               acc := 0 )
             else if
               (rem |<=| (time_zero |-| time_unit) || !acc >= 100)
-              && !last_latency_log |+| time_unit |<| gettimeofday ()
+              && !last_latency_log |+| time_unit |<| time ()
             then (
-              last_latency_log := gettimeofday () ;
+              last_latency_log := time () ;
               log#severe "We must catchup %.2f seconds%s!"
                 (Time.to_float (time_zero |-| rem))
                 ( if !acc <= 100 then ""

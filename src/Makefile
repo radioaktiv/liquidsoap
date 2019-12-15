@@ -227,7 +227,7 @@ builtins = lang/lang_builtins.ml \
 liquidsoap_sources= \
 	tools/log.ml $(tools) converters/audio_converter.ml $(stream) \
 	decoder/decoder.ml request.ml tools/server.ml \
-        tools/liq_time.ml $(if $(W_SYS_TIME),tools/liq_sys_time.ml) \
+        tools/liq_time.ml $(if $(W_POSIX_TIME),tools/liq_posix_time.ml) \
         source.ml clock.ml tools/rutils.ml \
 	playlist_parser.ml $(encoder_formats) encoder.ml \
 	tools/server_builtins.ml \

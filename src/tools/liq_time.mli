@@ -3,9 +3,9 @@ module type T = sig
 
   val implementation : string
 
-  val gettimeofday : unit -> t
+  val time : unit -> t
 
-  val usleep : t -> unit
+  val sleep : t -> unit
 
   val of_float : float -> t
 
