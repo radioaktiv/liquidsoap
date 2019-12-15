@@ -39,7 +39,11 @@ let time_unit = Time.of_float 1.
 let time_zero = Time.of_float 0.
 
 let sleep d =
-  try sleep d with Unix.Unix_error (Unix.EINTR, _, _) -> sleep (d |-| time ())
+  let cur = time () in
+  try sleep d
+  with Unix.Unix_error (Unix.EINTR, _, _) ->
+    let diff = d |-| time () |+| cur in
+    if time_zero |<| diff then sleep diff
 
 let () =
   Configure.at_init (fun () ->
