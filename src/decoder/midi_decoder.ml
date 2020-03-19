@@ -45,7 +45,7 @@ let decoder ~channels file =
       raise e
   in
   let fill buf =
-    let m = MFrame.content_of_type ~channels buf 0 in
+    let m = MFrame.content buf in
     let buflen = MFrame.size () in
     let r =
       close_on_err
