@@ -117,7 +117,7 @@ class lilv ~kind (source : source) plugin inputs outputs params =
     method private get_frame buf =
       let offset = AFrame.position buf in
       source#get buf;
-      let b = AFrame.content buf offset in
+      let b = AFrame.content buf in
       let position = AFrame.position buf in
       let len = position - offset in
       List.iter
@@ -171,7 +171,7 @@ class lilv_nosource ~kind plugin outputs params =
         must_fail <- false )
       else (
         let offset = AFrame.position buf in
-        let b = AFrame.content buf offset in
+        let b = AFrame.content buf in
         let chans = Array.length b in
         let position = AFrame.size () in
         let len = position - offset in
@@ -200,7 +200,7 @@ class lilv_noout ~kind source plugin inputs params =
 
     method private get_frame buf =
       let offset = AFrame.position buf in
-      let b = AFrame.content buf offset in
+      let b = AFrame.content buf in
       let chans = Array.length b in
       let position = AFrame.size () in
       let len = position - offset in

@@ -37,7 +37,6 @@ class midimeter ~kind source =
     method self_sync = source#self_sync
 
     method get_frame buf =
-      let offset = MFrame.position buf in
       source#get buf;
       let m = MFrame.content buf in
       (* Printf.printf "len: %d\n%!" (List.length (MIDI.data m.(0))); *)

@@ -76,12 +76,11 @@ class dssi ~kind ?chan plugin descr outputs params source =
 
     method private get_frame buf =
       let descr, inst = di in
-      let offset = Frame.position buf in
       let position =
         source#get buf;
         Frame.position buf
       in
-      let _, content = Frame.content buf offset in
+      let _, content = Frame.content buf in
       let b = content.Frame.audio in
       let evs = content.Frame.midi in
       (* Now convert everything to audio samples. *)
