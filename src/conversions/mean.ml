@@ -23,34 +23,26 @@
 open Source
 
 class mean ~kind source =
-  let base = new Conversion.base ~audio:true () in
   object
     inherit operator kind [source] ~name:"mean"
 
-    method stype = source#stype
-
-    method is_ready = source#is_ready
-
-    method remaining = source#remaining
-
-    method abort_track = source#abort_track
-
-    method seek = source#seek
-
-    method self_sync = source#self_sync
-
-    method private get_frame frame =
-      let tmp_frame = base#get_frame frame in
-      base#copy_frame frame tmp_frame;
-      let start = AFrame.position tmp_frame in
-      source#get tmp_frame;
-      let stop = AFrame.position tmp_frame in
-      let content = AFrame.content tmp_frame in
-      (* Compute the mean of audio channels *)
-      Frame.set_audio frame
-        [| Audio.to_mono (Audio.sub content start (stop - start)) |];
-      (* Copy the rest of the frame's content. *)
-      base#copy_frame tmp_frame frame
+    inherit
+      Conversion.base
+        ~audio:true source
+        ~converter:(fun ~frame tmp_frame ->
+          (* Compute the mean of audio channels *)
+          let start = Frame.position frame in
+          let len = Frame.position tmp_frame - start in
+          let channels = float (Array.length Frame.(tmp_frame.content.audio)) in
+          let ( ! ) = Frame.audio_of_master in
+          for i = !start to !(start + len) - 1 do
+            Frame.(
+              frame.content.audio.(0).{i} <-
+                Array.fold_left
+                  (fun m b -> m +. b.{i})
+                  0. tmp_frame.content.audio
+                /. channels)
+          done)
   end
 
 let () =

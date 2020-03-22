@@ -38,7 +38,12 @@ class mux ~kind ~mode ~main ~aux =
       raise (Lang_errors.Invalid_value (main, "Main source cannot be fallible"))
   in
 
-  let main_base = new Conversion.base ~audio ~video () in
+  let main_base =
+    new Conversion.base
+      ~audio ~video
+      ~converter:(fun ~frame:_ _ -> ())
+      main_source
+  in
 
   let aux_source = Lang.to_source aux in
   let () =
@@ -54,7 +59,12 @@ class mux ~kind ~mode ~main ~aux =
            (main, "Main and auxiliary sources cannot be both self-sync"))
   in
 
-  let aux_base = new Conversion.base ~audio:(not audio) ~video:(not video) () in
+  let aux_base =
+    new Conversion.base
+      ~audio:(not audio) ~video:(not video)
+      ~converter:(fun ~frame:_ _ -> ())
+      aux_source
+  in
   object (self)
     inherit Source.operator ~name:"mux" kind [main_source; aux_source]
 
@@ -86,7 +96,7 @@ class mux ~kind ~mode ~main ~aux =
       match main_frame with
         | Some f -> f
         | None ->
-            let f = main_base#get_frame frame in
+            let f = main_base#get_tmp_frame in
             main_base#copy_frame frame f;
             self#add_diff f main_diff;
             main_frame <- Some f;
@@ -100,7 +110,7 @@ class mux ~kind ~mode ~main ~aux =
       match aux_frame with
         | Some f -> f
         | None ->
-            let f = aux_base#get_frame frame in
+            let f = aux_base#get_tmp_frame in
             aux_base#copy_frame frame f;
             self#add_diff f aux_diff;
             aux_frame <- Some f;

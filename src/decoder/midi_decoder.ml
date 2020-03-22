@@ -28,7 +28,7 @@ exception Invalid_data
 
 let log = Log.make ["decoder"; "midi"]
 
-let decoder ~channels file =
+let decoder ~channels:_ file =
   log#info "Decoding %S..." file;
   let fd = new MIDI.IO.Reader.of_file file in
   let closed = ref false in

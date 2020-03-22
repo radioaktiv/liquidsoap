@@ -21,27 +21,14 @@
  *****************************************************************************)
 
 class drop ?audio ?video ?midi ~kind ~name source =
-  let base = new Conversion.base ?audio ?video ?midi () in
   object
     inherit Source.operator kind [source] ~name
 
-    method stype = source#stype
-
-    method is_ready = source#is_ready
-
-    method abort_track = source#abort_track
-
-    method remaining = source#remaining
-
-    method seek = source#seek
-
-    method self_sync = source#self_sync
-
-    method private get_frame frame =
-      let tmp_frame = base#get_frame frame in
-      base#copy_frame frame tmp_frame;
-      source#get tmp_frame;
-      base#copy_frame tmp_frame frame
+    inherit
+      Conversion.base
+        ?audio ?video ?midi
+        ~converter:(fun ~frame:_ _ -> ())
+        source
   end
 
 let () =
@@ -76,5 +63,5 @@ let () =
       Lang.add_operator name ~category:Lang.Conversions ~descr
         ~kind:(Lang.Unconstrained output)
         [("", Lang.source_t input, None, None)]
-        (fun p kind -> source p kind))
+        (fun p kind -> (source p kind :> Source.source)))
     [`Audio; `Video; `Midi]

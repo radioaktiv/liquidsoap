@@ -31,36 +31,21 @@
 
 (** Duplicate mono into stereo, drop channels when there are more than two. *)
 class basic ~kind source =
-  let base = new Conversion.base ~audio:true () in
   object
     inherit Source.operator kind [source] ~name:"audio_to_stereo"
 
-    method stype = source#stype
-
-    method is_ready = source#is_ready
-
-    method abort_track = source#abort_track
-
-    method remaining = source#remaining
-
-    method seek = source#seek
-
-    method self_sync = source#self_sync
-
-    method private get_frame frame =
-      let tmp_frame = base#get_frame frame in
-      base#copy_frame frame tmp_frame;
-      source#get tmp_frame;
-      (* First copy all untouched content from tmp_frame. *)
-      base#copy_frame tmp_frame frame;
-      (* Then set audio layer. *)
-      let audio =
-        match Frame.(tmp_frame.content.audio) with
-          | [||] -> assert false
-          | [| chan |] -> [| chan; chan |]
-          | audio -> Array.sub audio 0 2
-      in
-      Frame.set_audio frame audio
+    inherit
+      Conversion.base
+        ~audio:true source
+        ~converter:(fun ~frame tmp_frame ->
+          (* Set audio layer. *)
+          let audio =
+            match Frame.(tmp_frame.content.audio) with
+              | [||] -> assert false
+              | [| chan |] -> [| chan; chan |]
+              | audio -> Array.sub audio 0 2
+          in
+          Frame.set_audio frame audio)
   end
 
 let () =
@@ -69,4 +54,6 @@ let () =
     ~descr:"Convert any kind of audio source into a stereo source."
     ~kind:Lang.audio_stereo
     [("", Lang.source_t input_kind, None, None)]
-    (fun p kind -> new basic ~kind (Lang.to_source (List.assoc "" p)))
+    (fun p kind ->
+      let s = new basic ~kind (Lang.to_source (List.assoc "" p)) in
+      (s :> Source.source))
