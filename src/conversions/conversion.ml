@@ -41,34 +41,17 @@ class base ?(audio = false) ?(video = false) ?(midi = false) ~converter
      * source. Content untouched by the converter are replaced by
      * by content from the calling frame. Touched content get their
      * own layer. *)
-    val mutable tmp_frame = None
+    val mutable tmp_frame = Frame.create source#kind
 
-    method private content_type =
-      let content_type = Frame.type_of_kind source#kind in
-      {
-        Frame.audio = (if audio then content_type.Frame.audio else 0);
-        video = (if video then content_type.Frame.video else 0);
-        midi = (if midi then content_type.Frame.midi else 0);
-      }
+    method private tmp_frame = tmp_frame
 
-    method get_tmp_frame =
-      match tmp_frame with
-        | Some f -> f
-        | None ->
-            let f = Frame.create_type self#content_type in
-            tmp_frame <- Some f;
-            f
-
-    method copy_frame ?(markers = true) src dst =
-      if markers then (
-        Frame.set_breaks dst (Frame.breaks src);
-        Frame.set_all_metadata dst (Frame.get_all_metadata src) );
+    method private copy_frame src dst =
       if not audio then Frame.set_audio dst (Frame.audio src);
       if not video then Frame.set_video dst (Frame.video src);
       if not midi then Frame.set_midi dst (Frame.midi src)
 
     method private get_frame frame =
-      let tmp_frame = self#get_tmp_frame in
+      let tmp_frame = self#tmp_frame in
       self#copy_frame frame tmp_frame;
       source#get tmp_frame;
       converter ~frame tmp_frame;

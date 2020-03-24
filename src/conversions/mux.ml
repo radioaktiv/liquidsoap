@@ -28,21 +28,10 @@
   * from both sources. *)
 
 class mux ~kind ~mode ~main ~aux =
-  let audio, video =
-    match mode with `Add_audio -> (false, true) | `Add_video -> (true, false)
-  in
-
   let main_source = Lang.to_source main in
   let () =
     if main_source#stype <> Source.Infallible then
       raise (Lang_errors.Invalid_value (main, "Main source cannot be fallible"))
-  in
-
-  let main_base =
-    new Conversion.base
-      ~audio ~video
-      ~converter:(fun ~frame:_ _ -> ())
-      main_source
   in
 
   let aux_source = Lang.to_source aux in
@@ -51,22 +40,8 @@ class mux ~kind ~mode ~main ~aux =
       raise
         (Lang_errors.Invalid_value (aux, "Auxiliary source cannot be fallible"))
   in
-
-  let () =
-    if aux_source#self_sync && main_source#self_sync then
-      raise
-        (Lang_errors.Invalid_value
-           (main, "Main and auxiliary sources cannot be both self-sync"))
-  in
-
-  let aux_base =
-    new Conversion.base
-      ~audio:(not audio) ~video:(not video)
-      ~converter:(fun ~frame:_ _ -> ())
-      aux_source
-  in
   object (self)
-    inherit Source.operator ~name:"mux" kind [main_source; aux_source]
+    inherit Source.operator ~name:"mux" kind [main_source; aux_source] as super
 
     method self_sync = main_source#self_sync || aux_source#self_sync
 
@@ -78,74 +53,68 @@ class mux ~kind ~mode ~main ~aux =
 
     method remaining = main_source#remaining
 
-    (* 2 possible cases:
-     * - [None]: both streams are in sync
-     * - [Some data]: stream has pending data *)
-    method private add_diff frame =
-      function
-      | None -> ()
-      | Some (content, offset, length) ->
-          Frame.blit_content content offset frame.Frame.content 0 length;
-          Frame.add_break frame length
+    method private set_pos frame =
+      function None -> () | Some position -> Frame.add_break frame position
 
-    val mutable main_frame = None
-
-    val mutable main_diff = None
+    val mutable main_pos = None
 
     method private main_frame frame =
-      match main_frame with
-        | Some f -> f
-        | None ->
-            let f = main_base#get_tmp_frame in
-            main_base#copy_frame frame f;
-            self#add_diff f main_diff;
-            main_frame <- Some f;
-            f
+      let f =
+        Frame.
+          {
+            frame with
+            content =
+              ( match mode with
+                | `Add_audio -> { frame.content with audio = [||]; midi = [||] }
+                | `Add_video -> { frame.content with video = [||]; midi = [||] }
+                );
+          }
+      in
+      self#set_pos f main_pos;
+      f
 
-    val mutable aux_frame = None
-
-    val mutable aux_diff = None
+    val mutable aux_pos = None
 
     method private aux_frame frame =
-      match aux_frame with
-        | Some f -> f
-        | None ->
-            let f = aux_base#get_tmp_frame in
-            aux_base#copy_frame frame f;
-            self#add_diff f aux_diff;
-            aux_frame <- Some f;
-            f
+      let f =
+        Frame.
+          {
+            frame with
+            content =
+              ( match mode with
+                | `Add_audio -> { frame.content with video = [||]; midi = [||] }
+                | `Add_video -> { frame.content with audio = [||]; midi = [||] }
+                );
+          }
+      in
+      self#set_pos f aux_pos;
+      f
 
     method private get_frame frame =
       let position = Frame.position frame in
       let metadata = Frame.get_all_metadata frame in
 
       let main_frame = self#main_frame frame in
-
-      if Frame.is_partial main_frame then main_source#get main_frame;
-
       let aux_frame = self#aux_frame frame in
 
+      if Frame.is_partial main_frame then main_source#get main_frame;
       if Frame.is_partial aux_frame then aux_source#get aux_frame;
-
-      main_base#copy_frame ~markers:false main_frame frame;
-      aux_base#copy_frame ~markers:false aux_frame frame;
 
       (* Each filling operation should add exactly one break so we take
        * the earliest of both here and store the diff. *)
       let new_pos =
         match (Frame.position main_frame, Frame.position aux_frame) with
           | p, p' when p = p' ->
-              aux_diff <- None;
-              main_diff <- None;
+              aux_pos <- None;
+              main_pos <- None;
               p
           | p, p' when p < p' ->
-              aux_diff <- Some (aux_frame.Frame.content, p, p' - p);
-              main_diff <- None;
+              aux_pos <- Some p';
+              main_pos <- None;
               p
           | p, p' when p' < p ->
-              aux_diff <- None;
-              main_diff <- Some (aux_frame.Frame.content, p', p - p');
+              aux_pos <- None;
+              main_pos <- Some p;
               p'
           | _ -> assert false
       in
@@ -162,10 +131,10 @@ class mux ~kind ~mode ~main ~aux =
       in
       Frame.set_all_metadata frame (new_metadata @ metadata)
 
-    method advance =
-      main_frame <- None;
-      aux_frame <- None;
-      self#advance
+    method after_output =
+      main_pos <- None;
+      aux_pos <- None;
+      super#after_output
   end
 
 let () =
