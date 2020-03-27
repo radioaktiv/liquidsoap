@@ -28,7 +28,7 @@ exception Invalid_data
 
 let log = Log.make ["decoder"; "midi"]
 
-let decoder ~channels:_ file =
+let decoder file =
   log#info "Decoding %S..." file;
   let fd = new MIDI.IO.Reader.of_file file in
   let closed = ref false in
@@ -69,5 +69,5 @@ let () =
       in
       let channels = content.Frame.midi in
       if channels > 0 && Frame.type_has_kind content kind then
-        Some (fun () -> decoder ~channels filename)
+        Some (fun () -> decoder filename)
       else None)
